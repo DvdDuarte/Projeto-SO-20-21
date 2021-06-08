@@ -1,0 +1,26 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+struct config{
+	char* identificador;
+	char* executavel;
+	int instancias;
+};
+
+typedef struct config* Config;
+
+int main(int argc, char const *argv[]) {
+    int fd = open("/tmp/fifo", O_RDONLY);
+    int bytesRead = 0;
+    char buffer[1024];
+    /*while(1) {
+        write(STDOUT_FILENO, buffer, bytesRead);
+    }
+    */
+
+
+    close(fd);
+    return 0;
+}
