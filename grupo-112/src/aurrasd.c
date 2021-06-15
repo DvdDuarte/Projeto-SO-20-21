@@ -2,6 +2,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
 
 struct config{
 	char* identificador;
@@ -29,7 +31,7 @@ int main(int argc, char const *argv[]) {
 	strsep(&line," ");
 	char** linhas=malloc(sizeof(char*)*30);
 	while(line){
-		linhas[i]=strdup(strsep(&line," ");
+		linhas[i]=strdup(strsep(&line," "));
 		i++;
 	}
 	if(i<2){
@@ -38,7 +40,7 @@ int main(int argc, char const *argv[]) {
 	}
 	else{
 	//testa se o programa esta 
-		switch(linhas[1]){
+	/*	switch(linhas[1]){
 			case "transform":
 				break;
 			case "status":
@@ -46,11 +48,15 @@ int main(int argc, char const *argv[]) {
 			deafault:
 				//erro?
 				break;
-		}
-	}	
+		}*/
+	}
+	close(cs_fd);
+	close(sc_fd);	
    }
-   close(fd);
+   //close(cs_fd);
+
   //  unlink(cs_fd);//rever
   //  unlink(sc_fd);//rever
-    return 0;
+   
+   return 0;
 }
