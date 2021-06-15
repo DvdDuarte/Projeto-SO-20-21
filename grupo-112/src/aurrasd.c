@@ -14,6 +14,28 @@ struct config{
 
 typedef struct config* Config;
 
+int executeTransform(char* args){
+	//execvp("ffmpeg",);
+
+	return 0;
+}
+int executeStatus(){
+	
+	return 0;
+}
+int execute(char* op,char* args){
+        int ret = -1;
+
+       if(strcmp(op, "status")==0) {executeStatus();ret=0;}
+       else if(strcmp(op,"transform")==0){ executeTransform(args);ret=1;}
+       else perror("opcao invalida");
+
+        return ret;
+}
+
+
+
+
 int main(int argc, char const *argv[]) {
 
 	mkfifo("../tmp/fifo_client_server",0644);
@@ -21,6 +43,11 @@ int main(int argc, char const *argv[]) {
 	int op=0;
     
     int bytesRead = 0;
+    //argv[1]= ficheiro de config, argv[2]= pasta dos filtros executaveis
+    Config c= malloc(sizeof(struct config));
+    c->identificador=strdup(argv[1]);
+    c->executavel=strdup(argv[2]);
+    c->instancias=0;
 
 
     //while(1) {
@@ -70,15 +97,4 @@ int main(int argc, char const *argv[]) {
    return 0;
 }
 
-int execute(char* op,char* args){
-	int ret = -1;
 
-	switch (op){
-		case "status" :	executeStatus();
-			break;
-		case "transform" : executeTransform(args);
-			break;
-	}
-
-	return ret;
-}
