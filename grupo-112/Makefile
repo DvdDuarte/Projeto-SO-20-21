@@ -1,6 +1,4 @@
-all: fifo server client
-
-fifo: bin/createFIFO
+all: server client
 
 server: bin/aurrasd
 
@@ -12,11 +10,6 @@ bin/aurrasd: obj/aurrasd.o
 obj/aurrasd.o: src/aurrasd.c
 	gcc -Wall -g -c src/aurrasd.c -o obj/aurrasd.o
 
-bin/createFIFO: obj/createFIFO.o
-	gcc -g obj/createFIFO.o -o bin/createFIFO
-
-obj/createFIFO.o: src/createFIFO.c
-	gcc -Wall -g -c src/createFIFO.c -o obj/createFIFO.o 
 
 bin/aurras: obj/aurras.o
 	gcc -g obj/aurras.o -o bin/aurras
@@ -27,7 +20,7 @@ obj/aurras.o: src/aurras.c
 .PHONY: clean
 
 clean:
-	rm -rf obj/* tmp/* bin/aurras bin/aurrasd bin/createFIFO
+	rm -rf obj/* tmp/* bin/aurras bin/aurrasd 
 
 test:
 	bin/aurras samples/sample-1.mp3 tmp/sample-1.mp3
