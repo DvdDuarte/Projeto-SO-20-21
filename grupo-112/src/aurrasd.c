@@ -58,6 +58,7 @@ int executeTransform(char* args,int process){
 	}
 
 	//Adiciona os comandos a uma lista de strings
+	//A alteração da variável filtros[j].unUse++ tem que ser feita no processo pai
 	for(int i = 0; p.filtros[i] != NULL; i++){
 		for(int j = 0; j < MAXFILTERS; j++){
 			if(strcmp(p.filtros[i],filtros[j].name) == 0){
