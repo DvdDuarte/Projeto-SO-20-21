@@ -5,95 +5,246 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "../headers/queue.h"
+#include <sys/wait.h>
+#define MAXFILTERS 10
 
-struct config{
-	char* identificador;
-	char* executavel;
-	int instancias;
-};
+int ultimoProcesso = 1;
 
-typedef struct config* Config;
+typedef struct filter{
+	char* name;
+	char* executable;
+	int max;
+	int inUse;
+}Filter;
+
+typedef struct pedido{
+	char* ficheiroOrigem;
+	char* ficheiroDestino;
+	char* filtros[50];
+}Pedido;
+
+Filter* filtros;
+
+char** executing;
 
 int executeTransform(char* args){
-	//execvp("ffmpeg",);
+	int numeroComandos = 0;
+	Pedido p;
+	char** comandos;
 
-	return 0;
-}
-int executeStatus(){
+	comandos = malloc(sizeof(char*)*numeroComandos);
 	
+	//inicializa tudo a NULL
+	for(int i = 0; i < 50; i++){
+		p.filtros[i] = NULL;
+	}
+
+	p.ficheiroOrigem = strdup(strsep(&args," "));
+	p.ficheiroDestino = strdup(strsep(&args," "));
+	
+
+	//Conta os comandos ao mesmo tempo adiciona o nome do filtro a uma lista
+	while(args != NULL){
+		p.filtros[numeroComandos] = strdup(strsep(&args," "));
+		numeroComandos++;
+	}
+
+	//Adiciona os comandos a uma lista de strings
+	for(int i = 0; p.filtros[i] != NULL; i++){
+		for(int j = 0; j < MAXFILTERS; j++){
+			if(strcmp(p.filtros[i],filtros[j].name) == 0){
+				comandos[i] = strdup(filtros[j].executable);
+				break;		
+			}
+		}
+	}
+
+	int input = open(p.ficheiroOrigem, O_RDONLY);
+	int output = open(p.ficheiroDestino, O_CREAT | O_TRUNC | O_WRONLY,0666);
+
+	int pipes[numeroComandos-1][2];
+	int status[numeroComandos];
+
+	if(numeroComandos == 1){
+
+		dup2(input,0);
+		dup2(output,1);
+		execlp(comandos[0],comandos[0],NULL);
+
+	}else{
+
+		for(int c = 0; c<numeroComandos;c++){
+
+			if(c==0){
+
+				if(pipe(pipes[c]) != 0){
+					perror("pipe");
+					return -1;
+				}
+
+				switch (fork()){
+					case -1:
+						perror("fork");
+						return -1;
+
+					case 0:
+					//falta ligar o ficheiro mp4 ao input
+						close(pipes[c][0]);
+						dup2(input,0);
+						dup2(pipes[c][1],1);
+						close(pipes[c][1]);
+						execlp(comandos[c],comandos[c],NULL);
+						_exit(0);
+
+					default:
+						close(pipes[c][1]);
+				}
+			}else if(c == numeroComandos-1){
+
+				switch(fork()){
+					case -1:
+						perror("fork");
+						return -1;
+
+					case 0:
+						dup2(pipes[c-1][0],0);
+						dup2(output,1);
+						close(pipes[c-1][0]);
+						execlp(comandos[c],comandos[c],NULL);
+						_exit(0);
+
+					default:
+						close(pipes[c-1][0]);
+				}
+
+			}else{
+
+				if(pipe(pipes[c]) != 0){
+				perror("pipe");
+				return -1;
+				}
+
+				switch(fork()){
+					case -1:
+						perror("fork");
+						return -1;
+
+					case 0:
+						close(pipes[c][0]);
+						dup2(pipes[c][1],1);
+						close(pipes[c][1]);
+						dup2(pipes[c-1][0],0);
+						close(pipes[c-1][0]);
+						execlp(comandos[c],comandos[c],NULL);
+						_exit(0);
+
+					default:
+						close(pipes[c][1]);
+						close(pipes[c-1][0]);
+				}
+			}
+
+			for(int k = 0; k<numeroComandos;k++){
+				wait(&status[k]);
+			}
+		}
+	}
+
+
 	return 0;
 }
-int execute(char* op,char* args){
-        int ret = -1;
 
-       if(strcmp(op, "status")==0) {executeStatus();ret=0;}
-       else if(strcmp(op,"transform")==0){ executeTransform(args);ret=1;}
-       else perror("opcao invalida");
+int executeStatus(){
+	for(int i = 0; i < 800; i++){
+		if(executing[i] != NULL){
+			printf("task %d: %s\n",i+1,executing[i]);
+		}
+	}
+	int i = 0;
+	while(filtros[i].name != NULL){
+		printf("filter %s: %d/%d (running/max)\n",filtros[i].name,filtros[i].inUse,filtros[i].max);
+		i++;
+	}	
 
-        return ret;
+
+	return 0;
 }
 
+void execute(char* line){
+	pid_t pid;
+	char* dup = strdup(line);
+	
+	char* op = strsep(&line," ");
 
+	if((pid = fork()) == 0){
+       if(strcmp(op, "status")==0) {
+       		executeStatus();   		
+       }else{
+			if(strcmp(op,"transform")==0){ 	
+				executeTransform(line);			
+       		}else{
+       			perror("opcao invalida");
+       		}
+       	}
+       	_exit(0);
+    }else{
+    	if(strcmp(op,"transform") == 0){
+	    	executing[ultimoProcesso-1] = malloc(sizeof(char)*1024);
+			strcpy(executing[ultimoProcesso-1],dup);
+			ultimoProcesso++;
+		}
+    }
+  
+}
 
 
 int main(int argc, char const *argv[]) {
+	int bytesRead = 0;
+
+	int k = 0;
+	char* auxConfig = malloc(sizeof(char)*1024);
 
 	mkfifo("../tmp/fifo_client_server",0644);
-	//mkfifo("../tmp/fifo_server_client",0644);
-	int op=0;
-    
-    int bytesRead = 0;
-    //argv[1]= ficheiro de config, argv[2]= pasta dos filtros executaveis
-    Config c= malloc(sizeof(struct config));
-    c->identificador=strdup(argv[1]);
-    c->executavel=strdup(argv[2]);
-    c->instancias=0;
+	mkfifo("../tmp/fifo_server_client",0644);
+    int config = open(argv[1], O_RDONLY);
 
+    filtros = malloc(sizeof(Filter)*MAXFILTERS);
+    executing = malloc(sizeof(char*)*800);
 
-    //while(1) {
-	  	char* buffer=malloc(sizeof(char)*1024);
-	    int cs_fd = open("../tmp/fifo_client_server", O_RDONLY);
-		int sc_fd = open("../tmp/fifo_client_server", O_WRONLY);
+    read(config,auxConfig,1024);
+    char* field;
+    char* path = "../bin/aurrasd-filters/";
 
-	    while((bytesRead = read(cs_fd,buffer,1024)) > 0){
-	    	write(1,buffer,bytesRead);
-	    	execute(strsep(&buffer," "),buffer);
-	    }
+    while(auxConfig != NULL){
+    	field = strdup(strsep(&auxConfig,"\n"));
+    	filtros[k].name = strdup(strsep(&field," "));
+    	filtros[k].executable = strdup(path);
+    	char* aux = strdup(strsep(&field," "));
+    	strcat(filtros[k].executable,aux);
+    	filtros[k].max = atoi(field);
+    	filtros[k].inUse = 0;
+    	k++;
+
+    }
 	
-/*
-		int arg=strlen(buffer);
-		int i=0;
-		char *line= buffer;
-		strsep(&line," ");
-		char** linhas=malloc(sizeof(char*)*30);
-		while(line){
-			linhas[i]=strdup(strsep(&line," "));
-			i++;
-		}
-		if(i<2){
-			char * buf= "./aurras status\n./aurras transform input-filename output-filename filter-id-1 filter-id-2 ...\n";
-			write(sc_fd,buf,strlen(buf));
-		}
-		else{
-		//testa se o programa esta 
-		/*	switch(linhas[1]){
-				case "transform":
-					break;
-				case "status":
-					break;
-				deafault:
-					//erro?
-					break;
-			}
-		}*/
-		close(cs_fd);
-		//close(sc_fd);	
-  // }
-   //close(cs_fd);
+	char* buffer = malloc(sizeof(char)*1024);
 
-  //  unlink(cs_fd);//rever
-  //  unlink(sc_fd);//rever
-   
+	while(1){
+
+		for(int j = 0;j<1024;j++){
+			buffer[j] = '\0';
+		}
+
+		int cs_fd = open("../tmp/fifo_client_server", O_RDONLY);		
+	    bytesRead = read(cs_fd,buffer,1024);
+
+	    if(bytesRead>0) {
+	    	execute(buffer);
+	    	
+	    }	
+	}
+		
    return 0;
 }
 
