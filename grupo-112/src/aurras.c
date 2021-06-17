@@ -10,7 +10,8 @@ int main(int argc, char const *argv[]) {
 
     int i = 1;
     char buffer[1024];    
-    char buffer2[1024];    
+    char buffer2[1024];
+    char buffer3[1024];    
     int cs_fd = open("../tmp/fifo_client_server", O_RDWR);
     int sc_fd = open("../tmp/fifo_server_client", O_RDWR);
 
@@ -30,6 +31,7 @@ int main(int argc, char const *argv[]) {
             i=1;
             strcpy(buffer,argv[i]);
             i++;
+            int bytesRead = 0;
             while(i < argc){
                 strcat(buffer," ");
                 strcat(buffer,argv[i]);
@@ -37,6 +39,9 @@ int main(int argc, char const *argv[]) {
             }
             write(cs_fd,buffer,strlen(buffer));
             close(cs_fd);
+            while((bytesRead = read(sc_fd,buffer3,strlen(buffer3)))>0 && strcmp(buffer3,"fim")!=0){
+                write(1,buffer3,bytesRead);
+            }
 
         }
     }

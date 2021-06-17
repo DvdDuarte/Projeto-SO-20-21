@@ -61,11 +61,22 @@ int executeTransform(char* args,int process){
 	for(int i = 0; p.filtros[i] != NULL; i++){
 		for(int j = 0; j < MAXFILTERS; j++){
 			if(strcmp(p.filtros[i],filtros[j].name) == 0){
-				comandos[i] = strdup(filtros[j].executable);
-				break;		
+				if(filtros[j].inUse < filtros[j].max){
+					comandos[i] = strdup(filtros[j].executable);
+					filtros[j].inUse++;
+					
+							
+				}else{
+					int sc_fd = open("../tmp/fifo_server_client", O_RDWR);
+					write(sc_fd,"Filtro indisponível\n",21);
+					close(sc_fd);
+					return process;
+				}
+				break;
 			}
 		}
 	}
+
 
 	int input = open(p.ficheiroOrigem, O_RDONLY);
 	int output = open(p.ficheiroDestino, O_CREAT | O_TRUNC | O_WRONLY,0666);
@@ -77,7 +88,20 @@ int executeTransform(char* args,int process){
 
 		dup2(input,0);
 		dup2(output,1);
-		execlp(comandos[0],comandos[0],NULL);
+		switch(fork()){
+			case -1:
+				perror("fork");
+				return -1;
+
+			case 0:
+				execlp(comandos[0],comandos[0],NULL);
+				_exit(0);
+
+			default:
+				wait(&status[0]);
+
+		}
+		
 
 	}else{
 
@@ -155,9 +179,12 @@ int executeTransform(char* args,int process){
 			for(int k = 0; k<numeroComandos;k++){
 				wait(&status[k]);
 			}
+
 		}
 	}
-
+	int sc_fd = open("../tmp/fifo_server_client", O_RDWR);
+	write(sc_fd,"Concluído!\n",12);	
+	close(sc_fd);
 
 	return process;
 }
@@ -195,13 +222,19 @@ void execute(char* line){
 	char* op = strsep(&line," ");
 
 	signal(SIGUSR1,filhoAcaba);
+	
+
+
 	//cria worker
 	if((pid = fork()) == 0){
        if(strcmp(op, "status")==0) {
        		executeStatus();   		
        }else{
 			if(strcmp(op,"transform")==0){ 	
-				int process = executeTransform(line,ultimoProcesso-1);	
+				int process = executeTransform(line,ultimoProcesso-1);
+				int sc_fd = open("../tmp/fifo_server_client", O_RDWR);
+				write(sc_fd,"fim",4);	
+				close(sc_fd);
 				kill(getppid(),SIGUSR1);
 				_exit(process);		
        		}else{
@@ -236,7 +269,7 @@ int main(int argc, char const *argv[]) {
 
     read(config,auxConfig,1024);
     char* field;
-    char* path = "../bin/aurrasd-filters/";
+    char path[] = "../bin/aurrasd-filters/";
 
     while(auxConfig != NULL){
     	field = strdup(strsep(&auxConfig,"\n"));
