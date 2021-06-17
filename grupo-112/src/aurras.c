@@ -8,9 +8,10 @@
 int main(int argc, char const *argv[]) {
 
     int i = 1;
-    char buffer[1024];
-    
-    int cs_fd = open("../tmp/fifo_client_server", O_WRONLY);
+    char buffer[1024];    
+    char buffer2[1024];    
+    int cs_fd = open("../tmp/fifo_client_server", O_RDWR);
+    int sc_fd = open("../tmp/fifo_server_client", O_RDWR);
 
     if(argc == 1){
         write(1,"./aurras status\n",16);
@@ -18,6 +19,7 @@ int main(int argc, char const *argv[]) {
     }else{  
         if(argc == 2){
             write(cs_fd,argv[1],strlen(argv[1]));
+            close(cs_fd);
         }
         else{
             i=1;
@@ -29,7 +31,8 @@ int main(int argc, char const *argv[]) {
                 i++;
             }
             write(cs_fd,buffer,strlen(buffer));
-              
+            close(cs_fd);
+
         }
     }
 

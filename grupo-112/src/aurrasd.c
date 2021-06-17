@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "../headers/queue.h"
 #include <sys/wait.h>
 #define MAXFILTERS 10
 
@@ -27,6 +26,7 @@ typedef struct pedido{
 Filter* filtros;
 
 char** executing;
+
 
 int executeTransform(char* args){
 	int numeroComandos = 0;
@@ -151,7 +151,6 @@ int executeTransform(char* args){
 		}
 	}
 
-
 	return 0;
 }
 
@@ -174,9 +173,10 @@ int executeStatus(){
 void execute(char* line){
 	pid_t pid;
 	char* dup = strdup(line);
-	
 	char* op = strsep(&line," ");
 
+
+	//cria worker
 	if((pid = fork()) == 0){
        if(strcmp(op, "status")==0) {
        		executeStatus();   		
