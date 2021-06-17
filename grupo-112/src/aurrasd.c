@@ -155,16 +155,27 @@ int executeTransform(char* args){
 }
 
 int executeStatus(){
+	char buf[1024];
+
+	int sc_fd = open("../tmp/fifo_server_client", O_RDWR);
+
 	for(int i = 0; i < 800; i++){
 		if(executing[i] != NULL){
-			printf("task %d: %s\n",i+1,executing[i]);
+			//printf("task %d: %s\n",i+1,executing[i]);	
+			char aux[1024];
+			sprintf(aux,"task %d: %s\n",i+1,executing[i])	;
+			write(sc_fd,aux,strlen(aux));
 		}
 	}
 	int i = 0;
 	while(filtros[i].name != NULL){
-		printf("filter %s: %d/%d (running/max)\n",filtros[i].name,filtros[i].inUse,filtros[i].max);
+		//printf("filter %s: %d/%d (running/max)\n",filtros[i].name,filtros[i].inUse,filtros[i].max);
+		sprintf(buf,"filter %s: %d/%d (running/max)\n",filtros[i].name,filtros[i].inUse,filtros[i].max);
+		write(sc_fd,buf,strlen(buf));
 		i++;
 	}	
+	write(sc_fd,"fim",4);
+	close(sc_fd);
 
 
 	return 0;

@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char const *argv[]) {
 
@@ -20,6 +21,10 @@ int main(int argc, char const *argv[]) {
         if(argc == 2){
             write(cs_fd,argv[1],strlen(argv[1]));
             close(cs_fd);
+            int bytesRead = 0;
+            while((bytesRead = read(sc_fd,buffer2,strlen(buffer2)))>0 && strcmp(buffer2,"fim")!=0){  
+                write(1,buffer2,bytesRead);
+            }
         }
         else{
             i=1;
