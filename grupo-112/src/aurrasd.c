@@ -27,8 +27,15 @@ Filter* filtros;
 
 char** executing;
 
+void filhoAcaba(int signum){
+	int status;
+	if(signum == SIGUSR1){
+		wait(&status);
+		executing[WEXITSTATUS(status)] = NULL;	
+	}
+}
 
-int executeTransform(char* args){
+int executeTransform(char* args,int process){
 	int numeroComandos = 0;
 	Pedido p;
 	char** comandos;
@@ -151,7 +158,8 @@ int executeTransform(char* args){
 		}
 	}
 
-	return 0;
+
+	return process;
 }
 
 int executeStatus(){
@@ -186,14 +194,16 @@ void execute(char* line){
 	char* dup = strdup(line);
 	char* op = strsep(&line," ");
 
-
+	signal(SIGUSR1,filhoAcaba);
 	//cria worker
 	if((pid = fork()) == 0){
        if(strcmp(op, "status")==0) {
        		executeStatus();   		
        }else{
 			if(strcmp(op,"transform")==0){ 	
-				executeTransform(line);			
+				int process = executeTransform(line,ultimoProcesso-1);	
+				kill(getppid(),SIGUSR1);
+				_exit(process);		
        		}else{
        			perror("opcao invalida");
        		}
@@ -211,6 +221,7 @@ void execute(char* line){
 
 
 int main(int argc, char const *argv[]) {
+
 	int bytesRead = 0;
 
 	int k = 0;
